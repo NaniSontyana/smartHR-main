@@ -66,14 +66,23 @@ const seedData = async () => {
   ];
   const surnames = ["Smith", "Jones", "Taylor", "Brown", "White", "Harris", "Martin", "Thompson", "Garcia", "Martinez"];
 
+  const targetProfiles = [];
+  // 755 Research & Development (Low Risk)
+  for (let i = 0; i < 755; i++) {
+    targetProfiles.push(profiles[1]);
+  }
+  // 262 Sales (High Risk)
+  for (let i = 0; i < 262; i++) {
+    targetProfiles.push(profiles[0]);
+  }
+  // 453 Human Resources (Medium Risk)
+  for (let i = 0; i < 453; i++) {
+    targetProfiles.push(profiles[2]);
+  }
+
   // Generate 1470 employees
   for (let i = 1; i <= 1470; i++) {
-    const rand = Math.random();
-    let profile;
-    if (rand < 0.18) profile = profiles[0]; // ~18% High Risk population
-    else if (rand < 0.75) profile = profiles[1]; // ~57% Stable
-    else profile = profiles[2]; // ~25% Medium
-
+    const profile = targetProfiles[i - 1];
     const role = profile.roles[Math.floor(Math.random() * profile.roles.length)];
     const employeeId = `EMP${1000 + i}`;
     
@@ -86,22 +95,22 @@ const seedData = async () => {
     const isHistoricalAttrition = (profile.risk === "High" && Math.random() < 0.4) || (Math.random() < 0.03);
     const attritionStatus = (employeeId !== "EMP1001" && isHistoricalAttrition) ? "Yes" : "No";
 
-    // Predictions
-    let baseProb = profile.risk === "High" ? 0.75 : (profile.risk === "Medium" ? 0.4 : 0.05);
-
-    // HISTORY of predictions (last 12 months for this seed update to keep it fast)
+    // HISTORY of predictions (last 12 months)
     const monthsOfHistory = 12;
     for (let m = 0; m < monthsOfHistory; m++) {
       const date = new Date();
       date.setMonth(date.getMonth() - m);
 
-      const fluctuation = (Math.random() * 0.2) - 0.1;
-      const trendEffect = (m * -0.01); 
-      let prob = Math.min(0.99, Math.max(0.01, baseProb + fluctuation + trendEffect));
+      let prob;
+      const riskLevel = profile.risk; // Force to match profile risk
 
-      let riskLevel = "Low";
-      if (prob > 0.7) riskLevel = "High";
-      else if (prob > 0.4) riskLevel = "Medium";
+      if (riskLevel === "High") {
+        prob = 0.71 + (Math.random() * 0.24);
+      } else if (riskLevel === "Medium") {
+        prob = 0.41 + (Math.random() * 0.28);
+      } else {
+        prob = 0.02 + (Math.random() * 0.37);
+      }
 
       predictions.push({
         employeeId: employeeId,

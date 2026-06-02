@@ -8,7 +8,7 @@ dotenv.config();
 
 const checkDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
+        await mongoose.connect(process.env.MONGO_URI);
         console.log("Connected to MongoDB");
 
         const userCount = await User.countDocuments();

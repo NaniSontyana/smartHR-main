@@ -8,11 +8,11 @@ dotenv.config();
 const seedUser = async () => {
     try {
         console.log("Loading environment...");
-        if (!process.env.MONGODB_URI) {
-            throw new Error("MONGODB_URI is undefined. Check .env file.");
+        if (!process.env.MONGO_URI) {
+            throw new Error("MONGO_URI is undefined. Check .env file.");
         }
-        console.log("Connecting to MongoDB:", process.env.MONGODB_URI.split("@")[1]); // Log safe part of URI
-        await mongoose.connect(process.env.MONGODB_URI);
+        console.log("Connecting to MongoDB:", process.env.MONGO_URI.split("@")[1]); // Log safe part of URI
+        await mongoose.connect(process.env.MONGO_URI);
         console.log("Connected to MongoDB for seeding");
 
         const email = "admin@example.com";
