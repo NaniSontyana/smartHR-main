@@ -5,7 +5,10 @@ import Notification from "../models/Notification.model.js";
 import { initTransporter } from "./email.controller.js";
 import nodemailer from "nodemailer";
 
+// Temporary in-memory OTP store with TTL expiration (5 minutes)
+// In production scale-out, backed by Redis
 const otpStore = new Map();
+const OTP_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
 
 // ----------------------
 // SIGN UP (Register HR)
@@ -75,13 +78,8 @@ export const signIn = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Compare passwords
-    let isMatch = await bcrypt.compare(password, user.password).catch(() => false);
-    
-    // Fallback for legacy test accounts created before password hashing was enforced
-    if (!isMatch && password === user.password) {
-      isMatch = true;
-    }
+    // Compare passwords using bcrypt
+    const isMatch = await bcrypt.compare(password, user.password).catch(() => false);
     
     // Additional helpful error message if they try to login to a magic-link only account
     if (!isMatch && user.password === "MOCK_PASSWORD") {
@@ -137,9 +135,12 @@ export const sendOtp = async (req, res) => {
             return res.status(409).json({ message: "Account already exists. Please log in." });
         }
         
-        // Generate a 6-digit OTP
+        // Generate a 6-digit OTP with 5-minute TTL
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        otpStore.set(email, otp);
+        otpStore.set(email, {
+            otp,
+            expiresAt: Date.now() + OTP_EXPIRATION_MS
+        });
 
         const mailer = await initTransporter();
         
@@ -181,17 +182,19 @@ export const sendOtp = async (req, res) => {
 
         const info = await mailer.sendMail(mailOptions);
         let previewUrl = null;
-        let testCode = null;
-        
         if (info.messageId && !info.messageId.startsWith("mock-")) {
             previewUrl = nodemailer.getTestMessageUrl(info) || null;
-        } else if (info.messageId && info.messageId.startsWith("mock-")) {
-            testCode = otp;
         }
         
-        console.log(`[REAL] OTP ${otp} sent to ${email} | Preview: ${previewUrl || 'Console Only'}`);
+        console.log(`[AUTH] Verification OTP generated for ${email} (expires in 5 minutes)`);
 
-        res.json({ message: "OTP sent to your email", previewUrl, testCode });
+        // Do not leak OTP in production responses.
+        const responseData = { message: "OTP sent to your email", previewUrl };
+        if (process.env.NODE_ENV === "test") {
+            responseData.testCode = otp;
+        }
+
+        res.json(responseData);
     } catch (error) {
         console.error("Failed to send OTP via SMTP:", error);
         res.status(500).json({ message: "Failed to send OTP" });
@@ -205,16 +208,19 @@ export const verifyOtp = async (req, res) => {
     try {
         let { email, otp, type, signupData } = req.body;
         
-        if (!email) return res.status(400).json({ message: "Email is required" });
+        if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required" });
         email = email.toLowerCase();
         
-        const storedOtp = otpStore.get(email);
+        const stored = otpStore.get(email);
         
-        if (!storedOtp || storedOtp !== otp) {
+        if (!stored || stored.expiresAt < Date.now() || stored.otp !== otp) {
+            if (stored && stored.expiresAt < Date.now()) {
+                otpStore.delete(email);
+            }
             return res.status(401).json({ message: "Invalid or expired OTP" });
         }
         
-        // Clear OTP after successful use
+        // Clear OTP immediately upon verification
         otpStore.delete(email);
 
         let user = await User.findOne({ email });

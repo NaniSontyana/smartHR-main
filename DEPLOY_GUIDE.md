@@ -70,11 +70,11 @@ Deploy the Express server as another Web Service on Render.
    | Key | Value | Description |
    | :--- | :--- | :--- |
    | `NODE_ENV` | `production` | Enables production mode |
-   | `MONGO_URI` | `mongodb+srv://nanisontyana47_db_user:nani@cluster0.p4l3bw7.mongodb.net/?appName=Cluster0` | Connection string to MongoDB Atlas |
+   | `MONGO_URI` | `mongodb+srv://<username>:<password>@cluster0.your-subdomain.mongodb.net/?appName=Cluster0` | Connection string to MongoDB Atlas |
    | `JWT_SECRET` | `your_secure_random_string` | Secret key used for signing login tokens |
    | `ML_API_URL` | `https://your-ml-service.onrender.com/predict` | **The URL of your deployed ML service (from Step 2) + `/predict`** |
-   | `EMAIL_USER` | `nanisontyana47@gmail.com` | SMTP Email username |
-   | `EMAIL_PASS` | `tcgk xchg tpot ynpw` | SMTP App password |
+   | `EMAIL_USER` | `your-email@example.com` | SMTP Email username |
+   | `EMAIL_PASS` | `your-app-password` | SMTP App password |
    | `PORT` | `3000` | Port for the server |
 
 6. Click **Deploy Web Service**.

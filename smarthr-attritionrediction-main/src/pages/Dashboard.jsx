@@ -4,17 +4,15 @@ import { Users, Target, Smile } from "lucide-react";
 import Layout from "@/components/layout/Layout.jsx";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner.jsx";
 import { StatsCard } from "@/components/shared/StatsCard.jsx";
-import { UpgradeCard } from "@/components/shared/UpgradeCard.jsx";
+import { CapitalAtRiskCard } from "@/components/dashboard/CapitalAtRiskCard.jsx";
 import { AttritionTrendChart } from "@/components/dashboard/AttritionTrendChart.jsx";
 import { DepartmentChart } from "@/components/dashboard/DepartmentChart.jsx";
 import { ActionRecorder } from "@/components/dashboard/ActionRecorder.jsx";
 import { HighRiskEmployees } from "@/components/shared/HighRiskEmployees.jsx";
 import { HighRiskFactorsCard } from "@/components/dashboard/HighRiskFactorsCard.jsx";
 import { MailingManagement } from "@/components/dashboard/MailingManagement.jsx";
-import {
-  highRiskFactors as mockHighRiskFactors,
-} from "@/data/mockData";
 import { getDashboardStats, getActionLogs, getRecommendations } from "@/services/api";
+import { getSocket } from "@/services/socket";
 
 export function Dashboard() {
   const [stats, setStats] = useState({
@@ -49,6 +47,23 @@ export function Dashboard() {
 
   useEffect(() => {
     fetchData();
+
+    // Real-Time synchronization
+    const socket = getSocket();
+    const handleSync = () => {
+      fetchData();
+    };
+    const handleAction = (newAction) => {
+      setActions(prev => [newAction, ...prev.slice(0, 19)]);
+    };
+
+    socket.on("dashboard:sync", handleSync);
+    socket.on("action:created", handleAction);
+
+    return () => {
+      socket.off("dashboard:sync", handleSync);
+      socket.off("action:created", handleAction);
+    };
   }, [timeRange]);
 
   const refreshActions = async () => {
@@ -129,7 +144,7 @@ export function Dashboard() {
 
         {/* Right Column - Sidebar */}
         <div className="col-span-12 lg:col-span-3 space-y-6">
-          <UpgradeCard />
+          <CapitalAtRiskCard stats={dashboardStats} />
           <ActionRecorder history={actions} />
         </div>
       </div>

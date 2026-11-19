@@ -10,12 +10,15 @@ import {
   TrendingUp,
   Zap,
   Loader2,
-  Download
+  Download,
+  Sparkles,
+  Sliders
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { createActionLog } from "@/services/api";
 import { toast } from "sonner";
+import { RetentionSimulator } from "./RetentionSimulator";
 
 export function PredictionResult({ prediction, formData }) {
   const getRiskLevel = (score) => {
@@ -48,6 +51,7 @@ export function PredictionResult({ prediction, formData }) {
   const [isLogging, setIsLogging] = useState(false);
   const [logged, setLogged] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -190,6 +194,41 @@ export function PredictionResult({ prediction, formData }) {
           </div>
         </div>
       </div>
+      {/* What-If Counterfactual Simulator Toggle */}
+      <div className="border-t border-border pt-6 mt-8" data-html2canvas-ignore="true">
+        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/30 to-purple-950/40 border border-blue-500/20">
+          <div>
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-blue-400" />
+              Counterfactual Retention Simulator
+            </h4>
+            <p className="text-xs text-slate-400">
+              Test salary raises, overtime caps, and flexibility levers to see how much attrition risk drops in real time.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant={showSimulator ? "secondary" : "default"}
+            className="text-xs h-9 font-semibold gap-1.5 shadow-md bg-blue-600 hover:bg-blue-500 text-white"
+            onClick={() => setShowSimulator(!showSimulator)}
+          >
+            <Sliders className="h-3.5 w-3.5" />
+            {showSimulator ? "Hide Simulator" : "Open Simulator Levers"}
+          </Button>
+        </div>
+
+        {showSimulator && (
+          <div className="mt-4 p-4 rounded-xl border border-slate-700 bg-slate-950/90 shadow-2xl">
+            <RetentionSimulator 
+              employeeData={formData} 
+              onApplied={() => {
+                setLogged(true);
+              }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Act Now Section */}
       <div className="border-t border-border pt-6 mt-8" data-html2canvas-ignore="true">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-primary/5 p-6 rounded-2xl border border-primary/10">

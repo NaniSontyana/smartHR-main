@@ -20,8 +20,10 @@ import {
   MessageSquare, 
   Briefcase as RoleIcon,
   Send,
-  UserPlus
+  UserPlus,
+  Sparkles
 } from "lucide-react";
+import { RetentionPlaybookDialog } from "./RetentionPlaybookDialog";
 
 export function HighRiskEmployees({
   employees: initialEmployees = [], // prop is less relevant now as we fetch all
@@ -32,6 +34,7 @@ export function HighRiskEmployees({
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeLogs, setEmployeeLogs] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPlaybookOpen, setIsPlaybookOpen] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
@@ -219,6 +222,14 @@ export function HighRiskEmployees({
                    <div className="flex flex-wrap gap-2">
                       <Button 
                         size="sm" 
+                        className="h-8 gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-all shadow-sm"
+                        onClick={() => setIsPlaybookOpen(true)}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Generate Retention Playbook
+                      </Button>
+                      <Button 
+                        size="sm" 
                         variant="outline" 
                         className="h-8 gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all"
                         onClick={() => handleAction('review')}
@@ -284,6 +295,13 @@ export function HighRiskEmployees({
           )}
         </DialogContent>
       </Dialog>
+
+      <RetentionPlaybookDialog
+        employee={selectedEmployee}
+        isOpen={isPlaybookOpen}
+        onClose={() => setIsPlaybookOpen(false)}
+        onActionLogged={onActionLogged}
+      />
     </Card>
   );
 }

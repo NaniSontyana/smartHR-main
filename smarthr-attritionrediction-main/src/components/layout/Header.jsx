@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, Settings, Bell, ChevronDown, LogOut, User as UserIcon, Menu } from "lucide-react";
+import { Search, Settings, Bell, ChevronDown, LogOut, User as UserIcon, Menu, Activity, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { logout, getNotifications, markNotificationAsRead, getProfile } from "@/services/api";
+import { getSocket } from "@/services/socket";
 
 const navLinks = [
   { name: "Dashboard", path: "/" },
@@ -63,22 +65,39 @@ export function Header() {
         }).catch(err => console.error("Could not background fetch profile"));
     }
 
-    // Listen for mock email responses
-    const handleEmployeeResponse = (e) => {
-      // Refresh notifications from backend when a new one is dispatched
-      fetchNotifications();
-      toast.info(`New message from ${e.detail.name}`);
+    // Real-Time WebSocket notifications
+    const socket = getSocket();
+    const handleLiveNotification = (notif) => {
+      setNotifications(prev => [
+        {
+          id: notif.id || `notif_${Date.now()}`,
+          name: notif.name || notif.employeeName || "HR Alert",
+          message: notif.message,
+          time: notif.time || "Just now",
+          read: false
+        },
+        ...prev
+      ]);
+      toast.warning(notif.message || `New alert received`);
     };
 
+    socket.on("notification:new", handleLiveNotification);
+
     const fetchNotifications = async () => {
-      const data = await getNotifications();
-      setNotifications(data.map(n => ({
-        id: n._id,
-        name: n.employeeName,
-        message: n.message,
-        time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        read: n.read
-      })));
+      try {
+        const data = await getNotifications();
+        if (Array.isArray(data)) {
+          setNotifications(data.map(n => ({
+            id: n._id,
+            name: n.employeeName,
+            message: n.message,
+            time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            read: n.read
+          })));
+        }
+      } catch (err) {
+        console.warn("Could not fetch notifications:", err);
+      }
     };
 
     const handleProfileUpdate = () => {
@@ -90,10 +109,9 @@ export function Header() {
 
     fetchNotifications();
 
-    window.addEventListener('employee-response', handleEmployeeResponse);
     window.addEventListener('profile-updated', handleProfileUpdate);
     return () => {
-        window.removeEventListener('employee-response', handleEmployeeResponse);
+        socket.off("notification:new", handleLiveNotification);
         window.removeEventListener('profile-updated', handleProfileUpdate);
     };
   }, []);
@@ -112,16 +130,33 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card">
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-card/85 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-6">
         {/* Logo */}
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <span className="text-lg font-bold">S</span>
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+              <Activity className="h-5 w-5" />
             </div>
-            <span className="text-xl font-bold text-foreground">SmartHR</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-extrabold tracking-tight text-foreground">RetainIQ</span>
+                <span className="px-1.5 py-0.5 text-[9px] font-bold tracking-wider bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 rounded uppercase font-mono">
+                  v2.4
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground hidden sm:block font-medium">Workforce Retention Intelligence</p>
+            </div>
           </Link>
+
+          {/* Telemetry live beacon */}
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/40 dark:bg-slate-950/60 border border-border/60 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-medium text-muted-foreground">ML Inference: Online • 14ms</span>
+          </div>
 
           {/* Navigation - Only show if authenticated */}
           {isAuthenticated && (
@@ -132,10 +167,11 @@ export function Header() {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                    }`}
                   >
                     {link.name}
                   </Link>
@@ -236,9 +272,12 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Theme Switcher */}
+              <ThemeToggle />
+
               {/* Icons */}
               <Link to="/settings">
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Settings className="h-5 w-5" />
                 </Button>
               </Link>

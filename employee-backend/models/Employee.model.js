@@ -46,4 +46,8 @@ const employeeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Performance indexes for departmental filtering and search
+employeeSchema.index({ department: 1, jobRole: 1 });
+employeeSchema.index({ department: 1, monthlyIncome: 1 });
+
 export default mongoose.model("Employee", employeeSchema);

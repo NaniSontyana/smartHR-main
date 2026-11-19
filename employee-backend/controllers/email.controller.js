@@ -3,27 +3,41 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+let cachedTransporter = null;
+
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 /**
- * Initializes the email transporter.
+ * Initializes and caches the email transporter singleton.
  * Priority: 1. Gmail SMTP (via .env) 2. Ethereal (Test account)
  */
 export const initTransporter = async () => {
+    if (cachedTransporter) return cachedTransporter;
+
     // 1. Check for real Gmail SMTP credentials in .env
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        console.log("✅ Using Real Gmail SMTP: ", process.env.EMAIL_USER);
-        return nodemailer.createTransport({
+        cachedTransporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             }
         });
+        return cachedTransporter;
     }
 
     // 2. Fallback to Ethereal for local development or missing .env
-    console.warn("⚠️ SMTP credentials not found in .env, using Ethereal fallback.");
+    console.warn("⚠️ SMTP credentials not found in .env, initializing Ethereal fallback transporter.");
     const testAccount = await nodemailer.createTestAccount();
-    return nodemailer.createTransport({
+    cachedTransporter = nodemailer.createTransport({
         host: "smtp.ethereal.email",
         port: 587,
         secure: false,
@@ -32,6 +46,7 @@ export const initTransporter = async () => {
             pass: testAccount.pass,
         },
     });
+    return cachedTransporter;
 };
 
 /**
@@ -46,7 +61,8 @@ export const sendReviewEmail = async (req, res) => {
         }
 
         const transporter = await initTransporter();
-        const finalSubject = subject || `Quarterly Satisfaction Review - ${employeeName}`;
+        const safeEmployeeName = escapeHtml(employeeName || 'Team Member');
+        const finalSubject = subject ? escapeHtml(subject) : `Quarterly Satisfaction Review - ${safeEmployeeName}`;
 
         const info = await transporter.sendMail({
             from: `"SmartHR (Attrigen AI)" <${process.env.EMAIL_USER || 'support@smarthr.com'}>`,
@@ -58,7 +74,7 @@ export const sendReviewEmail = async (req, res) => {
                         <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px;">SmartHR Performance Review</h1>
                     </div>
                     <div style="padding: 40px 30px; color: #334155;">
-                        <p style="font-size: 16px; margin-top: 0;">Hello <strong>${employeeName}</strong>,</p>
+                        <p style="font-size: 16px; margin-top: 0;">Hello <strong>${safeEmployeeName}</strong>,</p>
                         <p style="font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
                             At SmartHR, your professional growth and workplace satisfaction are our top priorities. We have scheduled a brief quarterly satisfaction review to hear your valuable feedback regarding your recent experiences and the working environment.
                         </p>

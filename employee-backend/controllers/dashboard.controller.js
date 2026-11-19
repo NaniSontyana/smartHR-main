@@ -68,7 +68,7 @@ export const getDashboardStats = async (req, res) => {
             EmployeePrediction.countDocuments({ riskLevel: "High" }),
             EmployeePrediction.aggregate([
                 { $sort: { createdAt: -1 } },
-                { $group: { _id: "$employeeId", riskLevel: { $first: "$riskLevel" } } }
+                { $group: { _id: "$employeeId", riskLevel: { $first: "$riskLevel" }, probability: { $first: "$probability" } } }
             ]),
             EmployeePrediction.aggregate([
                 { $match: matchStage },
@@ -108,12 +108,41 @@ export const getDashboardStats = async (req, res) => {
         const attritionRate = latestPredictions.length > 0 ? Math.round((currentHighRiskCount / latestPredictions.length) * 100) : 0;
 
         const predictionMap = new Map();
-        latestPredictions.forEach(p => predictionMap.set(p._id, p.riskLevel));
+        const probabilityMap = new Map();
+        latestPredictions.forEach(p => {
+            predictionMap.set(p._id, p.riskLevel);
+            probabilityMap.set(p._id, typeof p.probability === 'number' ? p.probability : (p.riskLevel === 'High' ? 0.75 : p.riskLevel === 'Medium' ? 0.45 : 0.15));
+        });
+
+        // Calculate Financial Capital at Risk & Replacement exposure
+        // Industry benchmark: 75% of annual compensation for turnover replacement
+        let totalCapitalAtRisk = 0;
+        let potentialRetentionSavings = 0;
+        let totalSalaryExposure = 0;
+        const deptFinancials = {};
 
         const deptData = {};
         allEmployees.forEach(emp => {
             const dept = emp.department || "Unknown";
             const risk = predictionMap.get(emp.employeeId) || "Low";
+            const prob = probabilityMap.get(emp.employeeId) || 0.15;
+            const monthlySalary = emp.monthlyIncome || 5000;
+            const annualSalary = monthlySalary * 12;
+            const replacementCost = annualSalary * 0.75;
+            const lossExposure = replacementCost * prob;
+
+            totalCapitalAtRisk += lossExposure;
+            potentialRetentionSavings += (lossExposure * 0.65);
+            totalSalaryExposure += annualSalary;
+
+            if (!deptFinancials[dept]) {
+                deptFinancials[dept] = { department: dept, capitalAtRisk: 0, highRiskCount: 0, headCount: 0 };
+            }
+            deptFinancials[dept].capitalAtRisk += Math.round(lossExposure);
+            deptFinancials[dept].headCount += 1;
+            if (risk === "High") {
+                deptFinancials[dept].highRiskCount += 1;
+            }
 
             if (!deptData[dept]) {
                 deptData[dept] = { department: dept, Low: 0, Medium: 0, High: 0, Total: 0 };
@@ -158,6 +187,12 @@ export const getDashboardStats = async (req, res) => {
                 role: emp ? emp.jobRole : "Unknown",
                 department: emp ? emp.department : "Unknown",
                 riskScore: Math.round(p.probability * 100),
+                monthlyIncome: emp?.monthlyIncome || 5000,
+                jobSatisfaction: emp?.jobSatisfaction || 2,
+                workLifeBalance: emp?.workLifeBalance || 2,
+                overtime: emp?.overtime || "No",
+                yearsAtCompany: emp?.yearsAtCompany || 2,
+                email: emp?.email || "",
                 avatar: null
             };
         });
@@ -190,12 +225,16 @@ export const getDashboardStats = async (req, res) => {
             dashboardStats: {
                 totalEmployees,
                 attritionRate,
-                employeeSatisfaction
+                employeeSatisfaction,
+                capitalAtRisk: Math.round(totalCapitalAtRisk),
+                potentialRetentionSavings: Math.round(potentialRetentionSavings),
+                avgReplacementCost: Math.round((totalSalaryExposure / Math.max(1, totalEmployees)) * 0.75)
             },
             departmentPieData,
             attritionTrendData: formattedTrendData,
             highRiskEmployees: combinedHighRisk,
-            highRiskFactors
+            highRiskFactors,
+            departmentFinancialRisk: Object.values(deptFinancials)
         });
 
     } catch (error) {
@@ -227,6 +266,12 @@ export const getHighRiskEmployees = async (req, res) => {
                 role: emp ? emp.jobRole : "Unknown",
                 department: emp ? emp.department : "Unknown",
                 riskScore: Math.round(p.probability * 100),
+                monthlyIncome: emp?.monthlyIncome || 5000,
+                jobSatisfaction: emp?.jobSatisfaction || 2,
+                workLifeBalance: emp?.workLifeBalance || 2,
+                overtime: emp?.overtime || "No",
+                yearsAtCompany: emp?.yearsAtCompany || 2,
+                email: emp?.email || "",
                 avatar: null
             };
         });

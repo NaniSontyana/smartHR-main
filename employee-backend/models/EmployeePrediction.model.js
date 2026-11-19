@@ -21,6 +21,13 @@ const employeePredictionSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    factors: [
+      {
+        name: { type: String },
+        impact: { type: Number },
+        description: { type: String }
+      }
+    ],
     createdAt: {
       type: Date,
       default: Date.now,
@@ -29,6 +36,11 @@ const employeePredictionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound indexes for rapid high-risk lookups and dashboard queries
+employeePredictionSchema.index({ employeeId: 1, createdAt: -1 });
+employeePredictionSchema.index({ riskLevel: 1, createdAt: -1 });
+employeePredictionSchema.index({ createdAt: -1, probability: -1 });
 
 export default mongoose.model(
   "EmployeePrediction",

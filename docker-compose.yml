@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Python ML Microservice
+  ml-service:
+    build:
+      context: ./employee-ML
+      dockerfile: Dockerfile
+    container_name: smarthr-ml
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+    networks:
+      - smarthr-net
+
+  # Express.js Core Backend
+  backend:
+    build:
+      context: ./employee-backend
+      dockerfile: Dockerfile
+    container_name: smarthr-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ml-service
+      - mongodb
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/employee_attrition
+      - JWT_SECRET=smarthr_super_secret_production_key_2026
+      - ML_API_URL=http://ml-service:5000/predict
+      - CLIENT_URL=http://localhost:80,http://localhost:5173
+    networks:
+      - smarthr-net
+
+  # React Frontend (Nginx SPA)
+  frontend:
+    build:
+      context: ./smarthr-attritionrediction-main
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:3000/api
+    container_name: smarthr-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - smarthr-net
+
+  # Local MongoDB Service (Self-contained offline development)
+  mongodb:
+    image: mongo:6.0
+    container_name: smarthr-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - smarthr-net
+
+networks:
+  smarthr-net:
+    driver: bridge
+
+volumes:
+  mongo-data:

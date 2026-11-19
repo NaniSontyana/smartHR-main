@@ -1,4 +1,5 @@
 import Notification from "../models/Notification.model.js";
+import { emitNotification } from "../config/socket.js";
 
 export const getNotifications = async (req, res) => {
   try {
@@ -19,6 +20,16 @@ export const createNotification = async (req, res) => {
       message,
       type: 'response'
     });
+
+    // Real-Time alert to connected browsers
+    emitNotification({
+      id: notification._id,
+      name: employeeName,
+      message: message,
+      time: "Just now",
+      read: false
+    });
+
     res.status(201).json(notification);
   } catch (error) {
     res.status(500).json({ message: "Failed to create notification" });

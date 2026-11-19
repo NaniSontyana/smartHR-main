@@ -50,6 +50,7 @@ export function Reports() {
     attritionByOvertime: [],
     attritionByPerformance: [],
     attritionByJobSatisfaction: [],
+    featureImportance: []
   });
   const [highRiskEmployees, setHighRiskEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -212,7 +213,7 @@ export function Reports() {
                 />
               </div>
               <div className="col-span-12 lg:col-span-4">
-                <FeatureImportance data={featureImportance} />
+                <FeatureImportance data={data.featureImportance?.length > 0 ? data.featureImportance : featureImportance} />
               </div>
             </div>
 

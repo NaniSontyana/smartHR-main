@@ -1,17 +1,20 @@
 import Employee from "../models/Employee.model.js";
 import EmployeePrediction from "../models/EmployeePrediction.model.js";
+import { getFeatureImportance } from "../services/ml.service.js";
 
 export const getReportsData = async (req, res) => {
     try {
-        const latestPredictions = await EmployeePrediction.aggregate([
-            { $sort: { createdAt: -1 } },
-            { $group: { 
-                _id: "$employeeId", 
-                riskLevel: { $first: "$riskLevel" }
-            }}
+        const [latestPredictions, employees, featureImportance] = await Promise.all([
+            EmployeePrediction.aggregate([
+                { $sort: { createdAt: -1 } },
+                { $group: { 
+                    _id: "$employeeId", 
+                    riskLevel: { $first: "$riskLevel" }
+                }}
+            ]),
+            Employee.find({}),
+            getFeatureImportance()
         ]);
-
-        const employees = await Employee.find({});
 
         const predictionMap = new Map();
         latestPredictions.forEach(p => predictionMap.set(p._id, p.riskLevel));
@@ -81,7 +84,8 @@ export const getReportsData = async (req, res) => {
             attritionByJobSatisfaction: calculateStats("jobSatisfaction"),
             attritionByPerformance: calculateStats("performanceRating"),
             attritionByYearsAtCompany: calculateStats("yearsAtCompany"),
-            attritionByIncome: calculateStats("monthlyIncome")
+            attritionByIncome: calculateStats("monthlyIncome"),
+            featureImportance: featureImportance || []
         });
 
     } catch (error) {

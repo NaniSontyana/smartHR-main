@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Employee from "../models/Employee.model.js";
 import EmployeePrediction from "../models/EmployeePrediction.model.js";
+import { runBatchPrediction } from "../services/ml.service.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -13,10 +14,8 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const connectDB = async () => {
     try {
-        console.log("Connecting to", process.env.MONGO_URI);
+        console.log("Connecting to MongoDB...");
         await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000
         });
         console.log("✅ MongoDB connected");
@@ -29,71 +28,87 @@ const connectDB = async () => {
 const runBatchPredictions = async () => {
     await connectDB();
 
-    console.log("⏳ Fetching active employees...");
-    // Assuming active if no attrition field or attrition is 'No'
-    // For now get all
-    const employees = await Employee.find({});
+    console.log("⏳ Fetching active employees from database...");
+    const employees = await Employee.find({}).lean();
 
     if (employees.length === 0) {
-        console.log("❌ No employees found.");
+        console.log("❌ No employees found in database.");
         process.exit(0);
     }
 
-    const predictions = [];
-    const now = new Date();
-
     console.log(`🔍 Analyzing ${employees.length} employees...`);
+    const now = new Date();
+    let predictions = [];
 
-    for (const emp of employees) {
-        // Simplified Logic mimicking a trained model
-        let riskScore = 0;
+    try {
+        const mlResponse = await runBatchPrediction(employees);
+        if (mlResponse && Array.isArray(mlResponse.predictions) && mlResponse.predictions.length > 0) {
+            predictions = mlResponse.predictions.map(p => ({
+                employeeId: p.employeeId,
+                prediction: p.prediction,
+                probability: p.probability,
+                riskLevel: p.riskLevel,
+                factors: p.factors || [],
+                createdAt: now
+            }));
+            console.log(`✅ Received ${predictions.length} predictions from ML microservice.`);
+        }
+    } catch (err) {
+        console.warn("⚠️ ML microservice unavailable, using deterministic heuristics:", err.message);
+    }
 
-        // 1. Satisfaction (Huge Factor)
-        if (emp.jobSatisfaction <= 2) riskScore += 40;
-        if (emp.environmentSatisfaction <= 2) riskScore += 20;
+    if (predictions.length === 0) {
+        for (const emp of employees) {
+            let riskScore = 0;
+            const factors = [];
 
-        // 2. Compensation
-        if (emp.monthlyIncome < 3000) riskScore += 20;
-        if (emp.salaryHikePercentage < 11) riskScore += 10;
+            if ((emp.jobSatisfaction || 3) <= 2) {
+                riskScore += 35;
+                factors.push({ name: "Low Job Satisfaction", impact: 35 });
+            }
+            if ((emp.environmentSatisfaction || 3) <= 2) {
+                riskScore += 20;
+                factors.push({ name: "Work Environment", impact: 20 });
+            }
+            if ((emp.monthlyIncome || 5000) < 3500) {
+                riskScore += 30;
+                factors.push({ name: "Below Market Compensation", impact: 30 });
+            }
+            if (emp.overtime === 'Yes' || emp.overTime === 'Yes') {
+                riskScore += 25;
+                factors.push({ name: "High Overtime Demands", impact: 25 });
+            }
+            if ((emp.workLifeBalance || 3) <= 2) {
+                riskScore += 15;
+                factors.push({ name: "Work-Life Balance", impact: 15 });
+            }
 
-        // 3. Work Conditions
-        if (emp.overtime === 'Yes') riskScore += 15;
-        if (emp.workLifeBalance <= 2) riskScore += 15;
+            const probability = Math.min(0.95, Math.max(0.05, riskScore / 125));
+            let riskLevel = "Low";
+            if (probability >= 0.7) riskLevel = "High";
+            else if (probability >= 0.35) riskLevel = "Medium";
 
-        // 4. Tenure
-        if (emp.yearsAtCompany < 2) riskScore += 10;
-
-        // Normalize probability (0 to 1)
-        // Max score approx 130
-        let probability = Math.min(0.99, Math.max(0.01, riskScore / 130));
-
-        // Add randomness (Model uncertainty)
-        probability += (Math.random() * 0.1) - 0.05;
-        probability = Math.min(0.99, Math.max(0.01, probability));
-
-        let riskLevel = "Low";
-        if (probability > 0.7) riskLevel = "High";
-        else if (probability > 0.3) riskLevel = "Medium";
-
-        predictions.push({
-            employeeId: emp.employeeId,
-            prediction: probability > 0.5 ? 1 : 0,
-            probability: probability,
-            riskLevel: riskLevel,
-            createdAt: now
-        });
+            predictions.push({
+                employeeId: emp.employeeId,
+                prediction: probability > 0.5 ? 1 : 0,
+                probability: Math.round(probability * 100) / 100,
+                riskLevel,
+                factors,
+                createdAt: now
+            });
+        }
     }
 
     if (predictions.length > 0) {
         await EmployeePrediction.insertMany(predictions);
-        console.log(`✅ Successfully generated ${predictions.length} new predictions.`);
+        console.log(`🎉 Successfully inserted ${predictions.length} predictions into database!`);
     }
 
-    // Optional: Log stats
-    const high = predictions.filter(p => p.riskLevel === 'High').length;
-    console.log(`📊 Batch Summary: High Risk - ${high}, Medium - ${predictions.filter(p => p.riskLevel === 'Medium').length}, Low - ${predictions.filter(p => p.riskLevel === 'Low').length}`);
-
+    await mongoose.connection.close();
     process.exit(0);
 };
 
-runBatchPredictions();
+runBatchPredictions().catch(err => {
+    console.error("Fatal error:", err);
+    process.exit(1);
+});

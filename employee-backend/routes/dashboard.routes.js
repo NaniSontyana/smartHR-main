@@ -4,8 +4,8 @@ import authMiddleware from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// router.get("/", authMiddleware, getDashboardStats);
-router.get("/", getDashboardStats);
-router.get("/high-risk", getHighRiskEmployees);
+// GET /api/dashboard - Protected
+router.get("/", authMiddleware, getDashboardStats);
+router.get("/high-risk", authMiddleware, getHighRiskEmployees);
 
 export default router;

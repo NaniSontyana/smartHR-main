@@ -1,0 +1,80 @@
+name: SmartHR Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-checks:
+    name: Node.js Backend Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'employee-backend/package-lock.json'
+
+      - name: Install Dependencies
+        run: |
+          cd employee-backend
+          npm ci
+
+      - name: Syntax and Sanity Check
+        run: |
+          cd employee-backend
+          node -c server.js
+
+  frontend-checks:
+    name: React Frontend Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'smarthr-attritionrediction-main/package-lock.json'
+
+      - name: Install Dependencies
+        run: |
+          cd smarthr-attritionrediction-main
+          npm ci
+
+      - name: Run Build
+        run: |
+          cd smarthr-attritionrediction-main
+          npm run build
+
+  ml-checks:
+    name: Python ML Microservice Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'employee-ML/requirements.txt'
+
+      - name: Install Python Dependencies
+        run: |
+          cd employee-ML
+          pip install -r requirements.txt
+
+      - name: Validate Flask/ML Syntax
+        run: |
+          cd employee-ML
+          python -m py_compile app.py

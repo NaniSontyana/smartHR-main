@@ -1,4 +1,5 @@
 import ActionLog from "../models/ActionLog.model.js";
+import { emitActionCreated, emitDashboardSync } from "../config/socket.js";
 
 export const getActionLogs = async (req, res) => {
   try {
@@ -22,6 +23,11 @@ export const createActionLog = async (req, res) => {
       employeeId,
       date: 'Just now'
     });
+
+    // Real-Time broadcast to all open HR dashboards
+    emitActionCreated(log);
+    emitDashboardSync();
+
     res.status(201).json(log);
   } catch (error) {
     res.status(500).json({ message: "Failed to create action log" });

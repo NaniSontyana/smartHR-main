@@ -20,12 +20,15 @@ import {
   Clock,
   Heart,
   Brain,
-  Loader2
+  Loader2,
+  Sparkles,
+  Zap
 } from "lucide-react";
 
 import { predictAttrition, getEmployees } from "@/services/api";
 import { PredictionFormSection } from "@/components/predict/PredictionFormSection";
 import { PredictionResult } from "@/components/predict/PredictionResult";
+import { RetentionSimulator } from "@/components/predict/RetentionSimulator";
 import {
   departments,
   jobRoles,
@@ -94,11 +97,14 @@ export function Predict() {
       if (response.success) {
         const result = response.data;
         
-        // Calculate dynamic factors for the UI display based on the result
-        const factors = [];
-        if (formData.overTime === 'Yes' && result.probability > 0.4) factors.push({ name: "High Overtime", impact: 15 });
-        if (parseInt(formData.monthlyIncome) < 4000) factors.push({ name: "Competitiveness", impact: 20 });
-        if (parseInt(formData.jobSatisfaction) <= 2) factors.push({ name: "Job Satisfaction", impact: 35 });
+        // Use real explainability factors from the ML engine, with fallback heuristics
+        const factors = (result.factors && result.factors.length > 0)
+          ? result.factors
+          : [
+              ...(formData.overTime === 'Yes' && result.probability > 0.4 ? [{ name: "High Overtime", impact: 15 }] : []),
+              ...(parseInt(formData.monthlyIncome) < 4000 ? [{ name: "Competitiveness", impact: 20 }] : []),
+              ...(parseInt(formData.jobSatisfaction) <= 2 ? [{ name: "Job Satisfaction", impact: 35 }] : [])
+            ];
         
         setPrediction({
           riskScore: Math.round(result.probability * 100),
@@ -167,9 +173,12 @@ export function Predict() {
         {/* Input Mode Selection */}
         <Card className="p-6 card-shadow">
           <Tabs value={inputMode} onValueChange={setInputMode}>
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 h-12">
-              <TabsTrigger value="dropdown" className="text-base">Select Employee</TabsTrigger>
-              <TabsTrigger value="manual" className="text-base">Manual Input</TabsTrigger>
+            <TabsList className="grid w-full max-w-lg mx-auto grid-cols-3 h-12">
+              <TabsTrigger value="dropdown" className="text-sm font-medium">Select Employee</TabsTrigger>
+              <TabsTrigger value="manual" className="text-sm font-medium">Manual Input</TabsTrigger>
+              <TabsTrigger value="simulator" className="text-sm font-medium text-blue-500 font-semibold flex items-center gap-1.5">
+                <Zap className="h-4 w-4" /> What-If Simulator
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dropdown" className="mt-6">
@@ -195,79 +204,102 @@ export function Predict() {
                 Fill in the employee details below to get an accurate prediction.
               </p>
             </TabsContent>
+
+            <TabsContent value="simulator" className="mt-6 space-y-6">
+              <div className="max-w-md mx-auto mb-4">
+                <Label className="text-sm font-medium mb-2 block">Target Employee for Simulation</Label>
+                <Select value={selectedEmployee} onValueChange={handleEmployeeSelect}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select an employee or use current profile" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeeList.map((emp) => (
+                      <SelectItem key={emp._id || emp.id} value={(emp._id || emp.id).toString()}>
+                        {emp.name} - {emp.jobRole || emp.role} ({emp.department})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <RetentionSimulator employeeData={formData} />
+            </TabsContent>
           </Tabs>
         </Card>
 
-        {/* Form Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Employee Profile Section */}
-          <PredictionFormSection title="Employee Profile" icon={User}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                {renderInput("email", "Email Address", "employee@company.com", "email", "email")}
-              </div>
-              {renderInput("age", "Age", "35", "age")}
-              {renderSelect("department", "Department", "Select dept", "department", departments)}
-              {renderSelect("jobRole", "Job Role", "Select role", "jobRole", jobRoles)}
-              {renderSelect("overTime", "Overtime", "Works overtime?", "overTime", overtimeOptions)}
-            </div>
-          </PredictionFormSection>
+        {/* Form Sections (Only shown when not in simulator mode) */}
+        {inputMode !== "simulator" && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Employee Profile Section */}
+              <PredictionFormSection title="Employee Profile" icon={User}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    {renderInput("email", "Email Address", "employee@company.com", "email", "email")}
+                  </div>
+                  {renderInput("age", "Age", "35", "age")}
+                  {renderSelect("department", "Department", "Select dept", "department", departments)}
+                  {renderSelect("jobRole", "Job Role", "Select role", "jobRole", jobRoles)}
+                  {renderSelect("overTime", "Overtime", "Works overtime?", "overTime", overtimeOptions)}
+                </div>
+              </PredictionFormSection>
 
-          {/* Compensation Section */}
-          <PredictionFormSection title="Compensation & Benefits" icon={DollarSign}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {renderInput("monthlyIncome", "Monthly Income ($)", "5000", "monthlyIncome")}
-              {renderInput("percentSalaryHike", "Salary Hike (%)", "15", "percentSalaryHike")}
-              <div className="col-span-2">
-                {renderSelect("stockOptionLevel", "Stock Option Level", "Select level", "stockOptionLevel", stockOptionLevels)}
-              </div>
-            </div>
-          </PredictionFormSection>
+              {/* Compensation Section */}
+              <PredictionFormSection title="Compensation & Benefits" icon={DollarSign}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderInput("monthlyIncome", "Monthly Income ($)", "5000", "monthlyIncome")}
+                  {renderInput("percentSalaryHike", "Salary Hike (%)", "15", "percentSalaryHike")}
+                  <div className="col-span-2">
+                    {renderSelect("stockOptionLevel", "Stock Option Level", "Select level", "stockOptionLevel", stockOptionLevels)}
+                  </div>
+                </div>
+              </PredictionFormSection>
 
-          {/* Experience & Logistics Section */}
-          <PredictionFormSection title="Tenure & Logistics" icon={Clock}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {renderInput("yearsAtCompany", "Years at Company", "5", "yearsAtCompany")}
-              {renderInput("yearsSinceLastPromotion", "Years Since Promotion", "2", "yearsSinceLastPromotion")}
-              <div className="col-span-2">
-                {renderInput("distanceFromHome", "Distance from Home (miles)", "10", "distanceFromHome")}
-              </div>
-            </div>
-          </PredictionFormSection>
+              {/* Experience & Logistics Section */}
+              <PredictionFormSection title="Tenure & Logistics" icon={Clock}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderInput("yearsAtCompany", "Years at Company", "5", "yearsAtCompany")}
+                  {renderInput("yearsSinceLastPromotion", "Years Since Promotion", "2", "yearsSinceLastPromotion")}
+                  <div className="col-span-2">
+                    {renderInput("distanceFromHome", "Distance from Home (miles)", "10", "distanceFromHome")}
+                  </div>
+                </div>
+              </PredictionFormSection>
 
-          {/* Satisfaction Section */}
-          <PredictionFormSection title="Satisfaction & Wellness" icon={Heart}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {renderSelect("environmentSatisfaction", "Env. Satisfaction", "Select level", "environmentSatisfaction", satisfactionLevels)}
-              {renderSelect("jobSatisfaction", "Job Satisfaction", "Select level", "jobSatisfaction", satisfactionLevels)}
-              <div className="col-span-2">
-                {renderSelect("workLifeBalance", "Work-Life Balance", "Select level", "workLifeBalance", satisfactionLevels)}
-              </div>
+              {/* Satisfaction Section */}
+              <PredictionFormSection title="Satisfaction & Wellness" icon={Heart}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderSelect("environmentSatisfaction", "Env. Satisfaction", "Select level", "environmentSatisfaction", satisfactionLevels)}
+                  {renderSelect("jobSatisfaction", "Job Satisfaction", "Select level", "jobSatisfaction", satisfactionLevels)}
+                  <div className="col-span-2">
+                    {renderSelect("workLifeBalance", "Work-Life Balance", "Select level", "workLifeBalance", satisfactionLevels)}
+                  </div>
+                </div>
+              </PredictionFormSection>
             </div>
-          </PredictionFormSection>
-        </div>
 
-        {/* Predict Button */}
-        <div className="flex justify-center">
-          <Button
-            size="lg"
-            className="h-14 px-12 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
-            onClick={handlePredict}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Brain className="mr-2 h-5 w-5" />
-                Predict Attrition Risk
-              </>
-            )}
-          </Button>
-        </div>
+            {/* Predict Button */}
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                className="h-14 px-12 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+                onClick={handlePredict}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2 h-5 w-5" />
+                    Predict Attrition Risk
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        )}
 
         {/* Prediction Result Dialog */}
         <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
