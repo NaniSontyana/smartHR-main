@@ -58,10 +58,8 @@ services:
   # ─────────────────────────────────────────────────────────────────────────
   # 3. React Vite Frontend (Static SPA with Global CDN)
   # ─────────────────────────────────────────────────────────────────────────
-  - type: web
+  - type: static_site
     name: retainiq-frontend
-    runtime: static
-    plan: free
     rootDir: smarthr-attritionrediction-main
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
