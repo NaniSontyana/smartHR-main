@@ -1,0 +1,89 @@
+##############################################################################
+# RetainIQ™ Helm Chart — values.yaml
+# helm install retainiq ./helm/retainiq -f values.yaml -n retainiq
+##############################################################################
+
+# ── Global ───────────────────────────────────────────────────────────────────
+global:
+  registry: "docker.io/YOUR_DOCKERHUB_USERNAME"
+  imageTag: "latest"
+  region: "us-east1"
+  domain: "retainiq.io"
+
+# ── ML Service ───────────────────────────────────────────────────────────────
+mlService:
+  enabled: true
+  image:
+    repository: retainiq-ml
+    pullPolicy: Always
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+# ── Backend ──────────────────────────────────────────────────────────────────
+backend:
+  enabled: true
+  image:
+    repository: retainiq-backend
+    pullPolicy: Always
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 65
+  env:
+    NODE_ENV: production
+    PORT: "3000"
+  secrets:
+    # Reference to Kubernetes Secret (created separately)
+    secretName: retainiq-secrets
+
+# ── Frontend ─────────────────────────────────────────────────────────────────
+frontend:
+  enabled: true
+  image:
+    repository: retainiq-frontend
+    pullPolicy: Always
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ── Ingress ──────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  tls: true
+  certManagerIssuer: letsencrypt-prod
+  hosts:
+    app: "app.retainiq.io"
+    api: "api.retainiq.io"
+
+# ── Redis (optional — disable if using Upstash/Redis Cloud) ─────────────────
+redis:
+  enabled: false          # Set true only for single-region local Redis
+  image: redis:7-alpine
+  maxmemory: "128mb"
+  maxmemoryPolicy: "allkeys-lru"

@@ -1,6 +1,7 @@
 import Employee from '../models/Employee.model.js';
 import EmployeePrediction from '../models/EmployeePrediction.model.js';
 import { emitEmployeesChanged } from '../config/socket.js';
+import { invalidatePattern } from '../config/redis.js';
 
 export const addEmployee = async (req, res) => {
   try {
@@ -18,6 +19,8 @@ export const addEmployee = async (req, res) => {
 
     const employee = await Employee.create(req.body);
     emitEmployeesChanged({ type: "added", employee });
+    // New employee means dashboard counts change
+    await invalidatePattern("dashboard:*");
     res.status(201).json(employee);
   } catch (error) {
     console.error("addEmployee error:", error);
@@ -70,6 +73,11 @@ export const bulkAddEmployees = async (req, res) => {
 
     const result = await Employee.bulkWrite(operations);
     emitEmployeesChanged({ type: "bulk_imported", count: operations.length });
+    // Bulk import invalidates dashboard and reports
+    await Promise.all([
+      invalidatePattern("dashboard:*"),
+      invalidatePattern("reports:*"),
+    ]);
 
     res.json({
       success: true,

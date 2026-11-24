@@ -1,0 +1,61 @@
+##############################################################################
+# RetainIQ™ — Ingress (NGINX Ingress Controller)
+# Routes: app.retainiq.io → frontend
+#         api.retainiq.io → backend
+# TLS certificates managed by cert-manager (Let's Encrypt)
+##############################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retainiq-ingress
+  namespace: retainiq
+  annotations:
+    # NGINX Ingress Controller
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Rate limiting at ingress level (matches backend rate limiters)
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    # Sticky sessions for WebSocket (Socket.io)
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "retainiq-route"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    # TLS via cert-manager + Let's Encrypt
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # CORS headers
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.retainiq.io"
+spec:
+  tls:
+    - hosts:
+        - app.retainiq.io
+        - api.retainiq.io
+      secretName: retainiq-tls
+  rules:
+    # Frontend SPA
+    - host: app.retainiq.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+    # Backend REST API + WebSocket
+    - host: api.retainiq.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000

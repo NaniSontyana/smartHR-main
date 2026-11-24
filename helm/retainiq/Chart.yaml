@@ -1,0 +1,14 @@
+apiVersion: v2
+name: retainiq
+description: RetainIQ™ — Enterprise HR Attrition Intelligence Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - hr
+  - machine-learning
+  - attrition
+  - saas
+maintainers:
+  - name: RetainIQ Team
+home: https://retainiq.io

@@ -1,0 +1,80 @@
+##############################################################################
+# Kustomize overlay — US East 1 (us-central1 / us-east-1)
+# Primary region: highest traffic, largest pod count
+##############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: retainiq
+
+bases:
+  - ../../base
+
+# Region-specific label applied to every resource
+commonLabels:
+  region: us-east1
+
+patches:
+  # Scale up: US is primary region → more replicas
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+        namespace: retainiq
+      spec:
+        replicas: 4
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ml-service
+        namespace: retainiq
+      spec:
+        replicas: 3
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: retainiq
+      spec:
+        replicas: 2
+
+  # Region-specific ingress host
+  - patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: retainiq-ingress
+        namespace: retainiq
+      spec:
+        rules:
+          - host: us.app.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: frontend
+                      port:
+                        number: 80
+          - host: us.api.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 3000
+
+images:
+  - name: REGISTRY/retainiq-ml
+    newTag: us-east1-latest
+  - name: REGISTRY/retainiq-backend
+    newTag: us-east1-latest
+  - name: REGISTRY/retainiq-frontend
+    newTag: us-east1-latest

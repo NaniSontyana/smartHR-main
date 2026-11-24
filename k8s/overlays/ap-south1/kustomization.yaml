@@ -1,0 +1,69 @@
+##############################################################################
+# Kustomize overlay — AP South 1 (asia-south1 / ap-south-1)
+# Asia-Pacific region — low latency for India / SEA
+##############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: retainiq
+
+bases:
+  - ../../base
+
+commonLabels:
+  region: ap-south1
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+        namespace: retainiq
+      spec:
+        replicas: 2
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ml-service
+        namespace: retainiq
+      spec:
+        replicas: 2
+
+  - patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: retainiq-ingress
+        namespace: retainiq
+      spec:
+        rules:
+          - host: ap.app.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: frontend
+                      port:
+                        number: 80
+          - host: ap.api.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 3000
+
+images:
+  - name: REGISTRY/retainiq-ml
+    newTag: ap-south1-latest
+  - name: REGISTRY/retainiq-backend
+    newTag: ap-south1-latest
+  - name: REGISTRY/retainiq-frontend
+    newTag: ap-south1-latest

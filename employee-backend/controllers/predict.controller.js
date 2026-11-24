@@ -2,6 +2,7 @@ import { runPrediction, runBatchPrediction, runSimulation } from "../services/ml
 import Employee from "../models/Employee.model.js";
 import EmployeePrediction from "../models/EmployeePrediction.model.js";
 import { emitNotification, emitBatchProgress, emitDashboardSync } from "../config/socket.js";
+import { invalidatePattern } from "../config/redis.js";
 
 /**
  * Predict attrition risk for an individual employee
@@ -82,6 +83,14 @@ export const predictAttrition = async (req, res) => {
       });
     }
     emitDashboardSync();
+
+    // ── Cache Invalidation ──────────────────────────────────────────────────
+    // Bust dashboard & recommendations cache so next GET reflects new prediction
+    await Promise.all([
+      invalidatePattern("dashboard:*"),
+      invalidatePattern("recommendations:*"),
+      invalidatePattern("reports:*"),
+    ]);
 
     return res.json({
       success: true,
@@ -187,6 +196,13 @@ export const runBatchPredictions = async (req, res) => {
       completed: true
     });
     emitDashboardSync();
+
+    // ── Cache Invalidation (batch write touches everything) ─────────────────
+    await Promise.all([
+      invalidatePattern("dashboard:*"),
+      invalidatePattern("recommendations:*"),
+      invalidatePattern("reports:*"),
+    ]);
 
     res.json({
       success: true,

@@ -1,0 +1,69 @@
+##############################################################################
+# Kustomize overlay — EU West 1 (europe-west1 / eu-west-1)
+# GDPR-compliant region — data stays in Europe
+##############################################################################
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: retainiq
+
+bases:
+  - ../../base
+
+commonLabels:
+  region: eu-west1
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+        namespace: retainiq
+      spec:
+        replicas: 3
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ml-service
+        namespace: retainiq
+      spec:
+        replicas: 2
+
+  - patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: retainiq-ingress
+        namespace: retainiq
+      spec:
+        rules:
+          - host: eu.app.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: frontend
+                      port:
+                        number: 80
+          - host: eu.api.retainiq.io
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: backend
+                      port:
+                        number: 3000
+
+images:
+  - name: REGISTRY/retainiq-ml
+    newTag: eu-west1-latest
+  - name: REGISTRY/retainiq-backend
+    newTag: eu-west1-latest
+  - name: REGISTRY/retainiq-frontend
+    newTag: eu-west1-latest

@@ -19,6 +19,7 @@ dotenv.config();     // Load .env variables
 
 import connectDB from "./config/db.js";
 import { initSocket } from "./config/socket.js";
+import { connectRedis, isRedisUp } from "./config/redis.js";
 import authRoutes from "./routes/auth.routes.js";
 import employeeRoutes from "./routes/employee.routes.js";
 import predictRoutes from "./routes/predict.routes.js";
@@ -30,6 +31,7 @@ import actionRoutes from "./routes/action.routes.js";
 import recommendationRoutes from "./routes/recommendation.routes.js";
 
 connectDB();         // Connect to MongoDB
+connectRedis();      // Connect to Redis cache (graceful if unavailable)
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -86,13 +88,15 @@ app.use("/api/recommendations", apiLimiter, recommendationRoutes);
 // Health Check Endpoint (Liveness & Readiness probe)
 app.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  const cacheStatus = isRedisUp() ? "connected" : "unavailable";
   const statusCode = dbStatus === "connected" ? 200 : 503;
   res.status(statusCode).json({
     status: dbStatus === "connected" ? "healthy" : "degraded",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     services: {
-      database: dbStatus
+      database: dbStatus,
+      cache: cacheStatus
     }
   });
 });

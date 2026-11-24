@@ -1,0 +1,106 @@
+##############################################################################
+# RetainIQ™ ML Microservice — Kubernetes Deployment
+# Python Flask + scikit-learn Random Forest model
+##############################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-service
+  namespace: retainiq
+  labels:
+    app: ml-service
+    tier: ml
+    app.kubernetes.io/name: retainiq-ml
+spec:
+  replicas: 2                          # 2 replicas per region
+  selector:
+    matchLabels:
+      app: ml-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0                # Zero-downtime rolling updates
+  template:
+    metadata:
+      labels:
+        app: ml-service
+        tier: ml
+    spec:
+      # Spread pods across availability zones within the region
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: ml-service
+      containers:
+        - name: ml-service
+          image: REGISTRY/retainiq-ml:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+              name: http
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          env:
+            - name: PORT
+              value: "5000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-service
+  namespace: retainiq
+  labels:
+    app: ml-service
+spec:
+  type: ClusterIP                      # Internal only — backend talks to it directly
+  selector:
+    app: ml-service
+  ports:
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+      name: http
+---
+# Horizontal Pod Autoscaler — scales ML replicas 2→8 based on CPU
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ml-service-hpa
+  namespace: retainiq
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ml-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
