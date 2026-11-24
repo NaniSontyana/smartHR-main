@@ -39,21 +39,24 @@ const httpServer = http.createServer(app);
 // Initialize Real-Time WebSocket Server
 initSocket(httpServer);
 
-// Security Headers with Cross-Origin Resource Sharing allowed
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// CORS Configuration - Allows all valid web origins (localhost, Render, custom domains) with credentials
-app.use(cors({
-  origin: true,
+// ── CORS MUST come BEFORE Helmet so preflight (OPTIONS) responses are
+// ── sent immediately without Helmet blocking them. ──────────────────
+const corsOptions = {
+  origin: true,                 // reflect request origin → Access-Control-Allow-Origin
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
-}));
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  maxAge: 86400                 // cache preflight for 24 h
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));   // explicit preflight
 
-// Explicit Pre-flight OPTIONS handling
-app.options("*", cors());
+// Security Headers — disable every cross-origin header that conflicts with CORS
+app.use(helmet({
+  crossOriginResourcePolicy: false,   // do NOT send Cross-Origin-Resource-Policy
+  crossOriginOpenerPolicy: false,     // do NOT send Cross-Origin-Opener-Policy
+  crossOriginEmbedderPolicy: false    // do NOT send Cross-Origin-Embedder-Policy
+}));
 
 // Body Parser
 app.use(express.json({ limit: "1mb" }));
