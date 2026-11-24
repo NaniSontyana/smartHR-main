@@ -45,8 +45,12 @@ app.use(helmet());
 // CORS Configuration
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
-  // Allow any localhost / 127.0.0.1 origin (e.g. http://localhost, http://localhost:80, :8080, :5173, etc.)
+  // Allow any localhost / 127.0.0.1 origin
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+  // Allow all Render.com domains (*.onrender.com)
+  if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) {
     return true;
   }
   const allowed = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",").map(u => u.trim()) : [];
@@ -60,8 +64,13 @@ app.use(cors({
     }
     return callback(new Error("CORS policy violation: Origin not allowed"));
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 }));
+
+// Pre-flight support
+app.options("*", cors());
 
 // Body Parser
 app.use(express.json({ limit: "1mb" }));
@@ -84,14 +93,31 @@ const apiLimiter = rateLimit({
 });
 
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/auth", authLimiter, authRoutes);
+
 app.use("/api/employees", apiLimiter, employeeRoutes);
+app.use("/employees", apiLimiter, employeeRoutes);
+
 app.use("/api/predict", apiLimiter, predictRoutes);
+app.use("/predict", apiLimiter, predictRoutes);
+
 app.use("/api/dashboard", apiLimiter, dashboardRoutes);
+app.use("/dashboard", apiLimiter, dashboardRoutes);
+
 app.use("/api/reports", apiLimiter, reportsRoutes);
+app.use("/reports", apiLimiter, reportsRoutes);
+
 app.use("/api/email", apiLimiter, emailRoutes);
+app.use("/email", apiLimiter, emailRoutes);
+
 app.use("/api/notifications", apiLimiter, notificationRoutes);
+app.use("/notifications", apiLimiter, notificationRoutes);
+
 app.use("/api/actions", apiLimiter, actionRoutes);
+app.use("/actions", apiLimiter, actionRoutes);
+
 app.use("/api/recommendations", apiLimiter, recommendationRoutes);
+app.use("/recommendations", apiLimiter, recommendationRoutes);
 
 // Health Check Endpoint (Liveness & Readiness probe)
 app.get("/health", (req, res) => {

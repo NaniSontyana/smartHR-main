@@ -17,7 +17,8 @@ if (rawUrl.includes('retainiq-backend') && !rawUrl.includes('.onrender.com')) {
   }
 }
 
-const API_URL = rawUrl;
+// Normalize without trailing slash
+const API_URL = rawUrl.replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: API_URL,

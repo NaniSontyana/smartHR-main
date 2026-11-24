@@ -49,7 +49,7 @@ services:
           name: retainiq-ml
           property: host
       - key: CLIENT_URL
-        value: "https://retainiq-frontend.onrender.com,http://localhost:5173,http://localhost:8080,http://localhost"
+        value: "https://retainiq-frontend-41is.onrender.com,https://retainiq-frontend.onrender.com,http://localhost:5173,http://localhost:8080,http://localhost"
       - key: EMAIL_USER
         value: "nanisontyana47@gmail.com"
       - key: EMAIL_PASS
