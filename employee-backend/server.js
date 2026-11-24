@@ -49,7 +49,7 @@ const corsOptions = {
   maxAge: 86400                 // cache preflight for 24 h
 };
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));   // explicit preflight
+app.options("/{*path}", cors(corsOptions));   // explicit preflight (Express 5 syntax)
 
 // Security Headers — disable every cross-origin header that conflicts with CORS
 app.use(helmet({
