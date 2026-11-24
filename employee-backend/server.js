@@ -39,37 +39,20 @@ const httpServer = http.createServer(app);
 // Initialize Real-Time WebSocket Server
 initSocket(httpServer);
 
-// Security Headers
-app.use(helmet());
-
-// CORS Configuration
-const isOriginAllowed = (origin) => {
-  if (!origin) return true;
-  // Allow any localhost / 127.0.0.1 origin
-  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-    return true;
-  }
-  // Allow all Render.com domains (*.onrender.com)
-  if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) {
-    return true;
-  }
-  const allowed = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",").map(u => u.trim()) : [];
-  return allowed.includes(origin) || process.env.NODE_ENV !== "production";
-};
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (isOriginAllowed(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("CORS policy violation: Origin not allowed"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+// Security Headers with Cross-Origin Resource Sharing allowed
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Pre-flight support
+// CORS Configuration - Allows all valid web origins (localhost, Render, custom domains) with credentials
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
+}));
+
+// Explicit Pre-flight OPTIONS handling
 app.options("*", cors());
 
 // Body Parser

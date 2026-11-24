@@ -4,27 +4,9 @@ import jwt from "jsonwebtoken";
 let io = null;
 
 export const initSocket = (httpServer) => {
-  const isOriginAllowed = (origin) => {
-    if (!origin) return true;
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-      return true;
-    }
-    // Allow all Render.com domains (*.onrender.com)
-    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*onrender\.com$/.test(origin)) {
-      return true;
-    }
-    const allowed = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",").map(u => u.trim()) : [];
-    return allowed.includes(origin) || process.env.NODE_ENV !== "production";
-  };
-
   io = new Server(httpServer, {
     cors: {
-      origin: (origin, callback) => {
-        if (isOriginAllowed(origin)) {
-          return callback(null, true);
-        }
-        return callback(new Error("CORS policy violation for WebSocket"));
-      },
+      origin: true,
       credentials: true,
       methods: ["GET", "POST"]
     },
