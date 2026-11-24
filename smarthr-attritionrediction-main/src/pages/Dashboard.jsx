@@ -31,13 +31,15 @@ export function Dashboard() {
     setLoading(true);
     try {
       const [statsData, logsData, recsData] = await Promise.all([
-          getDashboardStats(timeRange),
-          getActionLogs(),
-          getRecommendations()
+          getDashboardStats(timeRange).catch(() => null),
+          getActionLogs().catch(() => []),
+          getRecommendations().catch(() => [])
       ]);
-      setStats(statsData);
-      setActions(logsData);
-      setRecommendations(recsData);
+      if (statsData && statsData.dashboardStats) {
+        setStats(statsData);
+      }
+      if (logsData) setActions(logsData);
+      if (recsData) setRecommendations(recsData);
     } catch (error) {
       console.error("Failed to load dashboard data", error);
     } finally {
@@ -75,7 +77,11 @@ export function Dashboard() {
     }
   };
 
-  const { dashboardStats, attritionTrendData, departmentPieData, highRiskEmployees, highRiskFactors } = stats;
+  const dashboardStats = stats?.dashboardStats || { totalEmployees: 0, attritionRate: 0, employeeSatisfaction: 0 };
+  const attritionTrendData = stats?.attritionTrendData || [];
+  const departmentPieData = stats?.departmentPieData || [];
+  const highRiskEmployees = stats?.highRiskEmployees || [];
+  const highRiskFactors = stats?.highRiskFactors || [];
 
   return (
     <Layout>
@@ -90,21 +96,21 @@ export function Dashboard() {
             <div className="col-span-12 md:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatsCard
                 icon={<Users className="h-6 w-6 text-blue-500" />}
-                value={loading ? "..." : dashboardStats.totalEmployees.toLocaleString()}
+                value={loading ? "..." : (dashboardStats?.totalEmployees ?? 0).toLocaleString()}
                 label="Total Employees"
                 iconBgClass="bg-blue-500/10"
                 accentColor="from-blue-500 to-cyan-400"
               />
               <StatsCard
                 icon={<Target className="h-6 w-6 text-rose-500" />}
-                value={loading ? "..." : `${dashboardStats.attritionRate}%`}
+                value={loading ? "..." : `${dashboardStats?.attritionRate ?? 0}%`}
                 label="Attrition Rate"
                 iconBgClass="bg-rose-500/10"
                 accentColor="from-rose-500 to-orange-400"
               />
               <StatsCard
                 icon={<Smile className="h-6 w-6 text-emerald-500" />}
-                value={loading ? "..." : `${dashboardStats.employeeSatisfaction}%`}
+                value={loading ? "..." : `${dashboardStats?.employeeSatisfaction ?? 0}%`}
                 label="Employee Satisfaction"
                 iconBgClass="bg-emerald-500/10"
                 accentColor="from-emerald-500 to-teal-400"

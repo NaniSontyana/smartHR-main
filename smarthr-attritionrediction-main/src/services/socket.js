@@ -1,8 +1,23 @@
 import { io } from "socket.io-client";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+let rawSocketUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+if (!rawSocketUrl.startsWith('http://') && !rawSocketUrl.startsWith('https://')) {
+  rawSocketUrl = `https://${rawSocketUrl}`;
+}
+if (rawSocketUrl.includes('retainiq-backend') && !rawSocketUrl.includes('.onrender.com')) {
+  try {
+    const urlObj = new URL(rawSocketUrl);
+    if (!urlObj.hostname.includes('.onrender.com') && urlObj.hostname.startsWith('retainiq-backend')) {
+      urlObj.hostname = `${urlObj.hostname}.onrender.com`;
+      rawSocketUrl = urlObj.toString();
+    }
+  } catch (e) {
+    console.warn("Could not parse socket API URL:", e);
+  }
+}
+
 // Derive socket base URL by stripping /api
-const SOCKET_URL = API_URL.replace(/\/api\/?$/, "");
+const SOCKET_URL = rawSocketUrl.replace(/\/api\/?$/, "");
 
 let socket = null;
 

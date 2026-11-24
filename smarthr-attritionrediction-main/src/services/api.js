@@ -1,6 +1,23 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+let rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+  rawUrl = `https://${rawUrl}`;
+}
+// Automatically fix Render internal service hostname (e.g. retainiq-backend-26wk -> retainiq-backend-26wk.onrender.com)
+if (rawUrl.includes('retainiq-backend') && !rawUrl.includes('.onrender.com')) {
+  try {
+    const urlObj = new URL(rawUrl);
+    if (!urlObj.hostname.includes('.onrender.com') && urlObj.hostname.startsWith('retainiq-backend')) {
+      urlObj.hostname = `${urlObj.hostname}.onrender.com`;
+      rawUrl = urlObj.toString();
+    }
+  } catch (e) {
+    console.warn("Could not parse API URL:", e);
+  }
+}
+
+const API_URL = rawUrl;
 
 const api = axios.create({
   baseURL: API_URL,

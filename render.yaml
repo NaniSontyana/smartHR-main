@@ -70,7 +70,7 @@ services:
           type: web
           name: retainiq-backend
           property: host
-          value: "https://${host}/api"
+          value: "https://${host}.onrender.com/api"
     routes:
       - type: rewrite
         source: /*
