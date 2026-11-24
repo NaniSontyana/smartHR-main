@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Activity } from "lucide-react";
 import { signup, sendOtp, verifyOtp } from "@/services/api";
 
 export default function Signup() {
@@ -92,11 +92,11 @@ export default function Signup() {
                 <div className="absolute right-20 bottom-20 h-96 w-96 rounded-full bg-white/10 blur-3xl z-0"></div>
                 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-16">
+                    <div className="flex items-center gap-3 mb-16">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-primary shadow-lg">
-                            <span className="text-2xl font-black">S</span>
+                            <Activity className="h-6 w-6 text-primary" />
                         </div>
-                        <span className="text-2xl font-bold tracking-tight">SmartHR</span>
+                        <span className="text-2xl font-bold tracking-tight">RetainIQ™</span>
                     </div>
                 </div>
 
@@ -119,7 +119,7 @@ export default function Signup() {
                 </div>
                 
                 <div className="relative z-10 text-sm text-primary-foreground/60">
-                    © 2026 SmartHR Analytics. All rights reserved.
+                    © 2026 RetainIQ™ Analytics. All rights reserved.
                 </div>
             </div>
 
@@ -128,9 +128,9 @@ export default function Signup() {
                 {/* Mobile Logo */}
                 <div className="w-full max-w-md mb-8 lg:hidden flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                        <span className="text-lg font-bold">S</span>
+                        <Activity className="h-4 w-4" />
                     </div>
-                    <span className="text-xl font-bold text-foreground tracking-tight">SmartHR</span>
+                    <span className="text-xl font-bold text-foreground tracking-tight">RetainIQ™</span>
                 </div>
 
                 <div className="w-full max-w-md space-y-8 my-auto">

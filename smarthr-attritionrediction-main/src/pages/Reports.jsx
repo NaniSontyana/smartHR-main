@@ -93,7 +93,7 @@ export function Reports() {
         pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       }
       
-      pdf.save("SmartHR_Professional_Report.pdf");
+      pdf.save("RetainIQ_Professional_Report.pdf");
     } catch (error) {
       console.error("Failed to generate PDF report:", error);
     } finally {

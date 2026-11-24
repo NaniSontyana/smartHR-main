@@ -21,7 +21,7 @@ export const getSocket = () => {
     });
 
     socket.on("connect", () => {
-      console.log("⚡ Connected to SmartHR Real-Time WebSocket Hub:", socket.id);
+      console.log("⚡ Connected to RetainIQ™ Real-Time WebSocket Hub:", socket.id);
     });
 
     socket.on("disconnect", (reason) => {
