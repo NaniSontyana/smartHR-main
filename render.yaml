@@ -58,8 +58,9 @@ services:
   # ─────────────────────────────────────────────────────────────────────────
   # 3. React Vite Frontend (Static SPA with Global CDN)
   # ─────────────────────────────────────────────────────────────────────────
-  - type: static_site
+  - type: web
     name: retainiq-frontend
+    runtime: static
     rootDir: smarthr-attritionrediction-main
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
@@ -70,7 +71,6 @@ services:
           name: retainiq-backend
           property: host
           value: "https://${host}/api"
-    # Single Page App rewrite: all routes fall back to index.html
     routes:
       - type: rewrite
         source: /*
