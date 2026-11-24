@@ -1,0 +1,79 @@
+##############################################################################
+# RetainIQ™ — Render.com Blueprint (Infrastructure as Code)
+# 100% Free Tier Deployment (No Credit Card Required)
+#
+# When you connect your repo to Render (https://render.com), Render reads
+# this file and auto-provisions all 3 microservices with a single click.
+##############################################################################
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1. Python ML Microservice (Flask + scikit-learn Random Forest)
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: retainiq-ml
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: employee-ML
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 app:app"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2. Node.js Express Core Backend + WebSockets + Redis Caching
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: retainiq-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: employee-backend
+    buildCommand: "npm install --production=false"
+    startCommand: "node server.js"
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        value: "mongodb+srv://nanisontyana47_db_user:nani@cluster0.p4l3bw7.mongodb.net/?appName=Cluster0"
+      - key: JWT_SECRET
+        value: "retainiq_super_secret_production_key_2026"
+      # Automatically links to the ML service created above
+      - key: ML_API_URL
+        fromService:
+          type: web
+          name: retainiq-ml
+          property: host
+      - key: CLIENT_URL
+        value: "https://retainiq-frontend.onrender.com,http://localhost:5173,http://localhost:8080,http://localhost"
+      - key: EMAIL_USER
+        value: "nanisontyana47@gmail.com"
+      - key: EMAIL_PASS
+        value: "tcgk xchg tpot ynpw"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 3. React Vite Frontend (Static SPA with Global CDN)
+  # ─────────────────────────────────────────────────────────────────────────
+  - type: web
+    name: retainiq-frontend
+    runtime: static
+    plan: free
+    rootDir: smarthr-attritionrediction-main
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: retainiq-backend
+          property: host
+          value: "https://${host}/api"
+    # Single Page App rewrite: all routes fall back to index.html
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -6,21 +6,21 @@ services:
     build:
       context: ./employee-ML
       dockerfile: Dockerfile
-    container_name: smarthr-ml
+    container_name: retainiq-ml
     restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - PORT=5000
     networks:
-      - smarthr-net
+      - retainiq-net
 
   # Express.js Core Backend
   backend:
     build:
       context: ./employee-backend
       dockerfile: Dockerfile
-    container_name: smarthr-backend
+    container_name: retainiq-backend
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -31,13 +31,13 @@ services:
     environment:
       - PORT=3000
       - NODE_ENV=production
-      - MONGO_URI=mongodb://mongodb:27017/employee_attrition
-      - JWT_SECRET=smarthr_super_secret_production_key_2026
+      - MONGO_URI=mongodb+srv://nanisontyana47_db_user:nani@cluster0.p4l3bw7.mongodb.net/?appName=Cluster0
+      - JWT_SECRET=retainiq_super_secret_production_key_2026
       - ML_API_URL=http://ml-service:5000/predict
-      - CLIENT_URL=http://localhost:80,http://localhost:5173
+      - CLIENT_URL=http://localhost:80,http://localhost:5173,http://localhost:8080
       - REDIS_URL=redis://redis:6379
     networks:
-      - smarthr-net
+      - retainiq-net
 
   # React Frontend (Nginx SPA)
   frontend:
@@ -46,40 +46,40 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=http://localhost:3000/api
-    container_name: smarthr-frontend
+    container_name: retainiq-frontend
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
     networks:
-      - smarthr-net
+      - retainiq-net
 
   # Redis Cache Service
   redis:
     image: redis:7-alpine
-    container_name: smarthr-redis
+    container_name: retainiq-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save ""
     networks:
-      - smarthr-net
+      - retainiq-net
 
   # Local MongoDB Service (Self-contained offline development)
   mongodb:
     image: mongo:6.0
-    container_name: smarthr-mongo
+    container_name: retainiq-mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
     networks:
-      - smarthr-net
+      - retainiq-net
 
 networks:
-  smarthr-net:
+  retainiq-net:
     driver: bridge
 
 volumes:

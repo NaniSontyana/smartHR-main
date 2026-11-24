@@ -43,11 +43,19 @@ initSocket(httpServer);
 app.use(helmet());
 
 // CORS Configuration
-const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",") : ["http://localhost:5173", "http://localhost:8080", "http://localhost:3000"];
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  // Allow any localhost / 127.0.0.1 origin (e.g. http://localhost, http://localhost:80, :8080, :5173, etc.)
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+  const allowed = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",").map(u => u.trim()) : [];
+  return allowed.includes(origin) || process.env.NODE_ENV !== "production";
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, server-to-server) or allowed origins
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(new Error("CORS policy violation: Origin not allowed"));

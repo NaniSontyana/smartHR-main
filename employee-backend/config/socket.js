@@ -4,14 +4,19 @@ import jwt from "jsonwebtoken";
 let io = null;
 
 export const initSocket = (httpServer) => {
-  const allowedOrigins = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL.split(",")
-    : ["http://localhost:5173", "http://localhost:8080", "http://localhost:3000", "http://localhost:80"];
+  const isOriginAllowed = (origin) => {
+    if (!origin) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return true;
+    }
+    const allowed = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(",").map(u => u.trim()) : [];
+    return allowed.includes(origin) || process.env.NODE_ENV !== "production";
+  };
 
   io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+        if (isOriginAllowed(origin)) {
           return callback(null, true);
         }
         return callback(new Error("CORS policy violation for WebSocket"));

@@ -1,7 +1,10 @@
 import axios from "axios";
 
 const ML_RAW_URL = process.env.ML_API_URL || "http://localhost:5000/predict";
-const ML_BASE_URL = ML_RAW_URL.replace(/\/predict\/?$/, "");
+let ML_BASE_URL = ML_RAW_URL.replace(/\/predict\/?$/, "");
+if (!ML_BASE_URL.startsWith("http://") && !ML_BASE_URL.startsWith("https://")) {
+  ML_BASE_URL = `https://${ML_BASE_URL}`;
+}
 
 const mlClient = axios.create({
   baseURL: ML_BASE_URL,
